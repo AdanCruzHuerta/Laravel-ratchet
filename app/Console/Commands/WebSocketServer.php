@@ -12,6 +12,7 @@ class WebSocketServer extends Command
 {
     /**
      * The name and signature of the console command.
+     * Nombre del comando 'websocket:init'
      *
      * @var string
      */
@@ -19,6 +20,7 @@ class WebSocketServer extends Command
 
     /**
      * The console command description.
+     * Descripción del comando
      *
      * @var string
      */

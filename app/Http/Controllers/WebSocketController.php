@@ -5,10 +5,17 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
+use Log;
 
 class WebSocketController extends Controller implements MessageComponentInterface
 {
-    private $connections = [];
+    //private $connections = [];
+    protected $clients;
+
+    public function __construct()
+    {
+        $this->clients = new \SplObjectStorage;
+    }
 
     /**
      * When a new connection is opened it will be passed to this method
@@ -16,7 +23,8 @@ class WebSocketController extends Controller implements MessageComponentInterfac
      * @throws \Exception
      */
     function onOpen(ConnectionInterface $conn){
-        $this->connections[$conn->resourceId] = compact('conn') + ['user_id' => null];
+        $this->clients->attach($conn);
+        Log::info("New connection! ({$conn->resourceId})");
     }
 
     /**
@@ -25,14 +33,9 @@ class WebSocketController extends Controller implements MessageComponentInterfac
      * @throws \Exception
      */
     function onClose(ConnectionInterface $conn){
-        $disconnectedId = $conn->resourceId;
-        unset($this->connections[$disconnectedId]);
-        foreach($this->connections as &$connection)
-            $connection['conn']->send(json_encode([
-                'offline_user' => $disconnectedId,
-                'from_user_id' => 'server control',
-                'from_resource_id' => null
-            ]));
+        // The connection is closed, remove it, as we can no longer send it messages
+        $this->clients->detach($conn);
+        Log::info("Connection {$conn->resourceId} has disconnected");
     }
 
     /**
@@ -43,9 +46,7 @@ class WebSocketController extends Controller implements MessageComponentInterfac
      * @throws \Exception
      */
     function onError(ConnectionInterface $conn, \Exception $e){
-        $userId = $this->connections[$conn->resourceId]['user_id'];
-        echo "An error has occurred with user $userId: {$e->getMessage()}\n";
-        unset($this->connections[$conn->resourceId]);
+        Log::error("An error has occurred: {$e->getMessage()}");
         $conn->close();
     }
 
@@ -55,24 +56,16 @@ class WebSocketController extends Controller implements MessageComponentInterfac
      * @param  string $msg The message received
      * @throws \Exception
      */
-    function onMessage(ConnectionInterface $conn, $msg){
-        if(is_null($this->connections[$conn->resourceId]['user_id'])){
-            $this->connections[$conn->resourceId]['user_id'] = $msg;
-            $onlineUsers = [];
-            foreach($this->connections as $resourceId => &$connection){
-                $connection['conn']->send(json_encode([$conn->resourceId => $msg]));
-                if($conn->resourceId != $resourceId)
-                    $onlineUsers[$resourceId] = $connection['user_id'];
+    function onMessage(ConnectionInterface $from, $msg){
+        $numRecv = count($this->clients) - 1;
+        Log::info(sprintf('Connection %d sending message "%s" to %d other connection%s' . ""
+            , $from->resourceId, $msg, $numRecv, $numRecv == 1 ? '' : 's'));
+
+        foreach ($this->clients as $client) {
+            if ($from !== $client) {
+                // The sender is not the receiver, send to each client connected
+                $client->send($msg);
             }
-            $conn->send(json_encode(['online_users' => $onlineUsers]));
-        } else{
-            $fromUserId = $this->connections[$conn->resourceId]['user_id'];
-            $msg = json_decode($msg, true);
-            $this->connections[$msg['to']]['conn']->send(json_encode([
-                'msg' => $msg['content'],
-                'from_user_id' => $fromUserId,
-                'from_resource_id' => $conn->resourceId
-            ]));
         }
     }
 }
