@@ -62,6 +62,13 @@
             .m-b-md {
                 margin-bottom: 30px;
             }
+            .box{
+                margin-top: 10px;
+                margin-bottom: 10px;
+                padding: 5px;
+                border-radius: 5px;
+            }
+
         </style>
     </head>
     <body>
@@ -81,18 +88,36 @@
                 <div class="title m-b-md">
                     Laravel
                 </div>
+                <center>
+                    <div class="box">
+                        <button onclick="subscribe('channel1')">Suscribe channel 1</button>
+                        <button onclick="sendMessage('Mensaje enviado desde el canal 1')">Mensaje channel 1</button>
+                    </div>
 
-                <div class="links">
-                    <a href="https://laravel.com/docs">Documentation</a>
-                    <a href="https://laracasts.com">Laracasts</a>
-                    <a href="https://laravel-news.com">News</a>
-                    <a href="https://forge.laravel.com">Forge</a>
-                    <a href="https://github.com/laravel/laravel">GitHub</a>
-                </div>
+                    <div class="box">
+                        <button onclick="subscribe('channel2')">Suscribe channel 2</button>
+                        <button onclick="sendMessage('Mensaje enviado desde el canal 2')">Mensaje channel 2</button>
+                    </div>
+
+                    <div class="box">
+                        <button onclick="subscribe('channel3')">Suscribe channel 3</button>
+                        <button onclick="sendMessage('Mensaje enviado desde el canal 3')">Mensaje channel 3</button>
+                    </div>
+
+                </center>
             </div>
         </div>
         <script>
             var conn = new WebSocket('ws://ratchet.test:8001');
+
+            /*conn.onopen = function(e) {
+                console.log("Connection established!");
+            };
+
+            conn.onmessage = function(e) {
+                console.log(e.data);
+            };*/
+
             conn.onopen = function(e) {
                 console.log("Connection established!");
             };
@@ -100,6 +125,14 @@
             conn.onmessage = function(e) {
                 console.log(e.data);
             };
+
+            function subscribe(channel) {
+                conn.send(JSON.stringify({command: "subscribe", channel: channel}));
+            }
+
+            function sendMessage(msg) {
+                conn.send(JSON.stringify({command: "message", message: msg}));
+            }
         </script>
     </body>
 </html>

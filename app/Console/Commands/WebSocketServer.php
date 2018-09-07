@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
-use App\Http\Controllers\WebSocketController;
+use App\Http\Controllers\{WebSocketController, WebSocketSuscriptionController};
 
 class WebSocketServer extends Command
 {
@@ -28,6 +28,7 @@ class WebSocketServer extends Command
 
     /**
      * Create a new command instance.
+     * Crear nueva instancia de comando
      *
      * @return void
      */
@@ -38,6 +39,7 @@ class WebSocketServer extends Command
 
     /**
      * Execute the console command.
+     * Código que se ejecuta cuando se inicia el comando
      *
      * @return mixed
      */
@@ -46,7 +48,8 @@ class WebSocketServer extends Command
         $server = IoServer::factory(
             new HttpServer(
                 new WsServer(
-                    new WebSocketController()
+                    //new WebSocketController()
+                    new WebSocketSuscriptionController()
                 )
             ),
             8001
