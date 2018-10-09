@@ -4,90 +4,55 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-
         <title>Laravel</title>
-
-        <!-- Fonts -->
-        <link href="https://fonts.googleapis.com/css?family=Raleway:100,600" rel="stylesheet" type="text/css">
-
-        <!-- Styles -->
-        <style>
-            html, body {
-                background-color: #fff;
-                color: #636b6f;
-                font-family: 'Raleway', sans-serif;
-                font-weight: 100;
-                height: 100vh;
-                margin: 0;
-            }
-
-            .full-height {
-                height: 100vh;
-            }
-
-            .flex-center {
-                align-items: center;
-                display: flex;
-                justify-content: center;
-            }
-
-            .position-ref {
-                position: relative;
-            }
-
-            .top-right {
-                position: absolute;
-                right: 10px;
-                top: 18px;
-            }
-
-            .content {
-                text-align: center;
-            }
-
-            .title {
-                font-size: 84px;
-            }
-
-            .links > a {
-                color: #636b6f;
-                padding: 0 25px;
-                font-size: 12px;
-                font-weight: 600;
-                letter-spacing: .1rem;
-                text-decoration: none;
-                text-transform: uppercase;
-            }
-
-            .m-b-md {
-                margin-bottom: 30px;
-            }
-            .box{
-                margin-top: 10px;
-                margin-bottom: 10px;
-                padding: 5px;
-                border-radius: 5px;
-            }
-
-        </style>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.1/css/bulma.css">
     </head>
     <body>
-        <div class="flex-center position-ref full-height">
-            @if (Route::has('login'))
-                <div class="top-right links">
-                    @auth
-                        <a href="{{ url('/home') }}">Home</a>
-                    @else
-                        <a href="{{ route('login') }}">Login</a>
-                        <a href="{{ route('register') }}">Register</a>
-                    @endauth
+        <div id="app">
+            <section class="section">
+                <div class="container">
+                    <div v-show="typeConnection == null">
+                        <h1 class="title">¿Tipo de conexión?</h1>
+                        <div class="columns">
+                            <div class="column">
+                                <a class="button is-outlined" @click="setTypeConnection(1)">Broadcast</a>
+                                <a class="button is-primary is-outlined" @click="setTypeConnection(2)">Dirigida</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-show="typeConnection == 1">
+                        <h1 class="title">Conexión broadcast</h1>
+                        <h2 class="subtitle">Cliente: @{{ idConnection }}</h2>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="field">
+                                    <div class="control">
+                                        <input class="input" type="text" placeholder="Enviar.." @keyup.enter="sendMessage" v-model="message">
+                                    </div>
+                                </div>
+                                <hr>
+                                <a class="button is-outlined" @click="typeConnection = null">Regresar</a>
+                            </div>
+                            <div class="column">
+                                <ul>
+                                    <li v-for="item in messages">
+                                        @{{item}}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-show="typeConnection == 2">
+                        <h1 class="title">Conexión dirigida</h1>
+                        <div class="columns">
+                            <div class="column">
+                                <a class="button is-outlined" @click="typeConnection = null">Regresar</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            @endif
-
-            <div class="content">
-                <div class="title m-b-md">
-                    Laravel
-                </div>
+            </section>
+            <!--<div class="content">
                 <center>
                     <div class="box">
                         <button onclick="subscribe('channel1')">Suscribe channel 1</button>
@@ -98,41 +63,74 @@
                         <button onclick="subscribe('channel2')">Suscribe channel 2</button>
                         <button onclick="sendMessage('Mensaje enviado desde el canal 2')">Mensaje channel 2</button>
                     </div>
-
-                    <div class="box">
-                        <button onclick="subscribe('channel3')">Suscribe channel 3</button>
-                        <button onclick="sendMessage('Mensaje enviado desde el canal 3')">Mensaje channel 3</button>
-                    </div>
-
                 </center>
-            </div>
+            </div>-->
         </div>
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
         <script>
-            var conn = new WebSocket('ws://ratchet.test:8001');
+            var vm = new Vue({
+                el: '#app',
+                data: {
+                    typeConnection: null,
+                    message: null,
+                    messages: [],
+                    conn: null,
+                    idConnection: null
+                },
+                mounted() {
+                    this.conn = new WebSocket('ws://ratchet.test:8001');
 
-            /*conn.onopen = function(e) {
-                console.log("Connection established!");
-            };
+                    this.conn.onopen = function(e) {
+                        console.log("Connection established!");
+                    };
 
-            conn.onmessage = function(e) {
-                console.log(e.data);
-            };*/
+                    this.conn.onmessage = function(e) {
+                        var resp = e.data.split("|");
+                        var event = resp[0];
+                        if(event == 'connect'){
+                            vm.idConnection = resp[1];
+                            return false;
+                        } else if(event == 'broadcast') {
+                            var message = "(" + resp[1] + ")" + ": " + resp[2];
+                            vm.messages.push(message);
+                            return false;
+                        }
+                    };
+                    /*function subscribe(channel) {
+                        conn.send(JSON.stringify({
+                            command: "subscribe",
+                            channel: channel
+                        }));
+                    }
 
-            conn.onopen = function(e) {
-                console.log("Connection established!");
-            };
+                    function sendMessage(msg) {
+                        conn.send(JSON.stringify({
+                            command: "message",
+                            message: msg
+                        }));
+                    }*/
+                },
+                methods: {
+                    setTypeConnection(val) {
+                        this.typeConnection = val;
+                        this.conn.send(JSON.stringify({
+                            command: "connect"
+                        }));
+                    },
+                    suscribe() {
 
-            conn.onmessage = function(e) {
-                console.log(e.data);
-            };
-
-            function subscribe(channel) {
-                conn.send(JSON.stringify({command: "subscribe", channel: channel}));
-            }
-
-            function sendMessage(msg) {
-                conn.send(JSON.stringify({command: "message", message: msg}));
-            }
+                    },
+                    sendMessage() {
+                        if(this.message != null){
+                            this.conn.send(JSON.stringify({
+                                command: "broadcast",
+                                message: this.message
+                            }));
+                            this.message = null;
+                        }
+                    }
+                }
+            });
         </script>
     </body>
 </html>

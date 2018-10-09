@@ -42,7 +42,6 @@ class WebSocketSuscriptionController extends Controller implements MessageCompon
     function onClose(ConnectionInterface $conn)
     {
         $this->clients->detach($conn);
-        Log::info("Usuario borrado: " . $conn->resourceId);
         unset($this->users[$conn->resourceId]);
         unset($this->subscriptions[$conn->resourceId]);
     }
@@ -69,21 +68,59 @@ class WebSocketSuscriptionController extends Controller implements MessageCompon
     function onMessage(ConnectionInterface $from, $msg)
     {
         $data = json_decode($msg);
-        switch ($data->command) {
+        if($data->command == 'connect') {
+            $this->connect($from);
+        }
+        if($data->command == 'broadcast'){
+            $this->broadcast($from, $data);
+        }
+        /*switch ($data->command) {
+            case "broadcast":
+                foreach ($this->users as $client) {
+                    Log::info(json_encode($client));
+                    //Log::info("from: {$from->resourceId}, client: {$client}");
+                    if ($from->resourceId === $client) {
+                        $client->send($msg);
+                    }
+                }
+                break;
             case "subscribe":
                 $this->subscriptions[$from->resourceId] = $data->channel;
-                Log::info("Usuario suscrito: " . $from->resourceId . " a canal: " . $data->channel);
+                Log::info("Usuario  {$from->resourceId} suscrito a canal {$data->channel}");
                 break;
             case "message":
+                Log::info("Suscripciones: " . json_encode($this->subscriptions));
+                Log::info("Sucripcion:: " . json_encode($from->resourceId));
                 if (isset($this->subscriptions[$from->resourceId])) {
                     $target = $this->subscriptions[$from->resourceId];
                     foreach ($this->subscriptions as $id => $channel){
                         if ($channel == $target && $id == $from->resourceId) {
                             Log::info("Mensaje enviado al canal: " . $channel . "");
                             $this->users[$id]->send($data->message);
+                            break;
                         }
                     }
+                } else {
+                    Log::info("No existe el recursoId");
+                    break;
                 }
+                break;
+        }*/
+    }
+
+    public function connect($from)
+    {
+        $idConnection = $from->resourceId;
+        $resp = implode('|', ['connect', $idConnection]);
+        $this->users[$idConnection]->send($resp);
+    }
+
+    public function broadcast($from, $msg)
+    {
+        //Emite el mensaje para todos los clientes conectados
+        foreach ($this->users as $client) {
+            $resp = implode('|', ['broadcast', $from->resourceId, $msg->message]);
+            $client->send($resp);
         }
     }
 }
